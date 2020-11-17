@@ -97,9 +97,9 @@ class ConvMixin(BroadcastMixin):
     if sys_config.device == 'CUDA':
       xs = tf.split(x, num_or_size_splits=group, axis=1)
     else:
-      x = tf.transpose(x,
-                       perm=get_perm_from_formats(storage_format,
-                                                  compute_format))
+      #x = tf.transpose(x,
+      #                 perm=get_perm_from_formats(storage_format,
+      #                                            compute_format))
       xs = tf.split(x, num_or_size_splits=group, axis=-1)
 
     if transpose:
@@ -225,24 +225,36 @@ class ConvMixin(BroadcastMixin):
           convolved.append(conv_rs)
 
     else:
-      convolved = [
+      if group != weights.shape[-1]:
+        convolved = [
           tf.nn.convolution(x,
                             weight,
                             padding=pad_mode,
                             strides=strides,
                             dilations=dilations,
-                            data_format=compute_format)
+                            data_format="NHWC")  #compute_format
           for (x, weight) in zip(xs, weight_groups)
-      ]
+        ]
+      else:
+        convolved = [
+          tf.nn.depthwise_conv2d(
+             x,
+             tf.transpose(weights, [0, 1, 3, 2]),  # [filter_height, filter_width, in_channels, multiplier (=1)]
+             strides=[1,strides[0],strides[1],1],  # requires a 4-d list
+             padding="VALID",
+             data_format="NHWC", # compute_format
+             dilations=dilations,
+         )
+        ]
 
     if len(node.inputs) == 2:
       if sys_config.device == 'CUDA':
         output = tf.concat(convolved, axis=1)
       else:
         output = tf.concat(convolved, axis=-1)
-        output = tf.transpose(output,
-                              perm=get_perm_from_formats(
-                                  compute_format, storage_format))
+        #output = tf.transpose(output,
+        #                      perm=get_perm_from_formats(
+        #                          compute_format, storage_format))
     else:
       bias = input_dict[node.inputs[2]]
       bias = cls.explicit_broadcast([x, bias], compute_c_idx)
@@ -253,8 +265,8 @@ class ConvMixin(BroadcastMixin):
       else:
         output = tf.concat(convolved, axis=-1)
         output = tf.add(output, bias)
-        output = tf.transpose(output,
-                              perm=get_perm_from_formats(
-                                  compute_format, storage_format))
+        #output = tf.transpose(output,
+        #                      perm=get_perm_from_formats(
+        #                          compute_format, storage_format))
 
     return [output]

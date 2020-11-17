@@ -37,6 +37,7 @@ class Clip(BackendHandler):
   def _common(cls, node, **kwargs):
     tensor_dict = kwargs["tensor_dict"]
     x = tensor_dict[node.inputs[0]]
+    y = x
     x_dtype = x.dtype
 
     if cls.SINCE_VERSION < 11:
@@ -58,8 +59,12 @@ class Clip(BackendHandler):
         clip_value_min, cls.cast_map[x_dtype]) if need_cast else clip_value_min
     clip_value_max = tf.cast(
         clip_value_max, cls.cast_map[x_dtype]) if need_cast else clip_value_max
-    y = tf.clip_by_value(x, clip_value_min, clip_value_max)
-    y = tf.cast(y, x_dtype) if need_cast else y
+    if clip_value_min == 0.0 and clip_value_max == 6.0:
+      y = tf.nn.relu6(x)
+      y = tf.cast(y, x_dtype) if need_cast else y
+    else:
+      y = tf.clip_by_value(x, clip_value_min, clip_value_max)
+      y = tf.cast(y, x_dtype) if need_cast else y
 
     return [y]
 

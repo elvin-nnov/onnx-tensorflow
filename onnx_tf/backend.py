@@ -129,6 +129,9 @@ class TensorflowBackend(Backend):
       shape = list(
           d.dim_value if (d.dim_value > 0 and d.dim_param == "") else None
           for d in value_info.type.tensor_type.shape.dim)
+
+      # change from NCHW to NHWC
+      shape = [1, shape[2], shape[3], shape[1]]
       value_info_name = value_info.name.replace(
           ":", "_tf_") + "_" + get_unique_suffix(
           ) if ":" in value_info.name else value_info.name

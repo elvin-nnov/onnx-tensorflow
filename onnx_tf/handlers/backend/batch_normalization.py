@@ -28,9 +28,9 @@ class BatchNormalization(BackendHandler):
     x_rank = len(x_shape)
 
     params_shape_broadcast = list(
-        [1, x_shape[1]] + [1 for _ in range(2, x_rank)])
-    if params_shape_broadcast[1] is None:
-      params_shape_broadcast[1] = tf.shape(x)[1]
+        [x_shape[3]])  #[1 for _ in range(0, x_rank -1 )] + [x_shape[3]]
+    if params_shape_broadcast[0] is None:
+      params_shape_broadcast[0] = tf.shape(x)[3]
       params_shape_broadcast = tf.stack(params_shape_broadcast)
 
     total_num_dim = len(x.get_shape())
